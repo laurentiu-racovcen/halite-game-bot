@@ -35,22 +35,23 @@ int main(int argc, char ** argv) {
     std::vector<std::string> * names = NULL;
     unsigned int id = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock().now().time_since_epoch()).count();
 
-    TCLAP::CmdLine cmd("Halite Game Environment", ' ', "1.2");
+    TCLAP::CmdLine cmd("Halite Game Environment", ' ', "1.0.1");
 
     //Switch Args.
     TCLAP::SwitchArg quietSwitch("q", "quiet", "Runs game in quiet mode, producing machine-parsable output.", cmd, false);
     TCLAP::SwitchArg overrideSwitch("o", "override", "Overrides player-sent names using cmd args [SERVER ONLY].", cmd, false);
     TCLAP::SwitchArg timeoutSwitch("t", "timeout", "Causes game environment to ignore timeouts (give all bots infinite time).", cmd, false);
-    TCLAP::SwitchArg noReplaySwitch("r", "noreplay", "Turns off the replay generation.", cmd, false);
+    TCLAP::ValueArg<int> maxTurnNumber("m", "max_turns", "Maximum number of turns (if not provided, maximum is taken as sqrt(map.height * map.width) * 10", false, -1, "integer", cmd);
 
     //Value Args
     TCLAP::ValueArg<unsigned int> nPlayersArg("n", "nplayers", "Create a map that will accommodate n players [SINGLE PLAYER MODE ONLY].", false, 1, "{1,2,3,4,5,6}", cmd);
     TCLAP::ValueArg< std::pair<signed int, signed int> > dimensionArgs("d", "dimensions", "The dimensions of the map.", false, { 0, 0 }, "a string containing two space-seprated positive integers", cmd);
     TCLAP::ValueArg<unsigned int> seedArg("s", "seed", "The seed for the map generator.", false, 0, "positive integer", cmd);
-    TCLAP::ValueArg<std::string> replayDirectoryArg("i", "replaydirectory", "The path to directory for replay output.", false, ".", "path to directory", cmd);
 
     //Remaining Args, be they start commands and/or override names. Description only includes start commands since it will only be seen on local testing.
     TCLAP::UnlabeledMultiArg<std::string> otherArgs("NonspecifiedArgs", "Start commands for bots.", false, "Array of strings", cmd);
+
+    int max_turns = maxTurnNumber.getValue();
 
     cmd.parse(argc, argv);
 
@@ -110,7 +111,8 @@ int main(int argc, char ** argv) {
         }
         try {
             while(!unlabeledArgs.empty()) {
-                std::cout << unlabeledArgs.front() << std::endl;
+                if (!quiet_output)
+                    std::cout << unlabeledArgs.front() << std::endl;
                 networking.startAndConnectBot(unlabeledArgs.front());
                 unlabeledArgs.pop_front();
             }
@@ -120,6 +122,7 @@ int main(int argc, char ** argv) {
             exit(1);
         }
     }
+
 
     if(networking.numberOfPlayers() > 1 && n_players_for_map_creation != 1) {
         std::cout << std::endl << "Only single-player mode enables specified n-player maps.  When entering multiple bots, please do not try to specify n." << std::endl << std::endl;
@@ -136,20 +139,14 @@ int main(int argc, char ** argv) {
 
 
     //Create game. Null parameters will be ignored.
-    my_game = new Halite(mapWidth, mapHeight, seed, n_players_for_map_creation, networking, ignore_timeout);
+    my_game = new Halite(mapWidth, mapHeight, seed, n_players_for_map_creation, networking, ignore_timeout, max_turns);
 
-    std::string outputFilename = replayDirectoryArg.getValue();
-#ifdef _WIN32
-    if(outputFilename.back() != '\\') outputFilename.push_back('\\');
-#else
-    if(outputFilename.back() != '/') outputFilename.push_back('/');
-#endif
-    GameStatistics stats = my_game->runGame(names, seed, id, !noReplaySwitch.getValue(), outputFilename);
+    GameStatistics stats = my_game->runGame(names, seed, id);
     if(names != NULL) delete names;
 
     std::string victoryOut;
     if(quiet_output) {
-        std::cout << stats;
+        //std::cout << stats;
     }
     else {
         for(unsigned int a = 0; a < stats.player_statistics.size(); a++) std::cout << "Player #" << stats.player_statistics[a].tag << ", " << my_game->getName(stats.player_statistics[a].tag) << ", came in rank #" << stats.player_statistics[a].rank << " and was last alive on frame #" << stats.player_statistics[a].last_frame_alive << "!\n";

@@ -59,6 +59,8 @@ private:
     unsigned short productive_squares_remaining;
     unsigned short n_players_for_map_creation;
     bool ignore_timeout;
+    int max_turn_number;
+
     hlt::Map game_map;
     std::vector<std::string> player_names;
     std::vector< std::map<hlt::Location, unsigned char> > player_moves;
@@ -82,10 +84,19 @@ private:
 
     std::vector<bool> processNextFrame(std::vector<bool> alive);
     void output(std::string filename);
-public:
-    Halite(unsigned short width_, unsigned short height_, unsigned int seed_, unsigned short n_players_for_map_creation, Networking networking_, bool shouldIgnoreTimeout);
 
-  GameStatistics runGame(std::vector<std::string> * names_, unsigned int seed, unsigned int id, bool enabledReplay, std::string replayDirectory);
+    GameStatistics stats;
+
+public:
+    Halite(unsigned short width_, 
+           unsigned short height_, 
+           unsigned int seed_, 
+           unsigned short n_players_for_map_creation, 
+           Networking networking_, 
+           bool shouldIgnoreTimeout,
+           int max_turn_number);
+
+    GameStatistics& runGame(std::vector<std::string> * names_, unsigned int seed, unsigned int id);
     std::string getName(unsigned char playerTag);
 
     ~Halite();

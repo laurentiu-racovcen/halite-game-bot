@@ -204,13 +204,26 @@ std::vector<bool> Halite::processNextFrame(std::vector<bool> alive) {
 }
 
 //Public Functions -------------------
-Halite::Halite(unsigned short width_, unsigned short height_, unsigned int seed_, unsigned short n_players_for_map_creation, Networking networking_, bool shouldIgnoreTimeout) {
+Halite::Halite(unsigned short width_, 
+               unsigned short height_, 
+               unsigned int seed_, 
+               unsigned short n_players_for_map_creation, 
+               Networking networking_, 
+               bool shouldIgnoreTimeout,
+               int max_turn_number) {
+
     networking = networking_;
     // number_of_players is the number of active bots to start the match; it is constant throughout game
     number_of_players = networking.numberOfPlayers();
 
     //Initialize map
     game_map = hlt::Map(width_, height_, n_players_for_map_creation, seed_);
+
+    if (max_turn_number < 0) {
+        this->max_turn_number = sqrt(game_map.map_width * game_map.map_height) * 10;
+    } else {
+        this->max_turn_number = max_turn_number;
+    }
 
     //If this is single-player mode, remove all the extra players (they were automatically inserted in map, just 0 them out)
     if (number_of_players == 1){
@@ -246,6 +259,7 @@ Halite::Halite(unsigned short width_, unsigned short height_, unsigned int seed_
 }
 
 void Halite::output(std::string filename) {
+
     std::ofstream gameFile;
     gameFile.open(filename, std::ios_base::binary);
     if(!gameFile.is_open()) throw std::runtime_error("Could not open file for replay");
@@ -300,13 +314,31 @@ void Halite::output(std::string filename) {
     j["frames"] = nlohmann::json(frames);
     j["moves"] = nlohmann::json(moves);
 
-    gameFile << j;
+    productive_squares_remaining = 0;
+    for(unsigned short b = 0; b < game_map.map_height; b++) 
+        for(unsigned short c = 0; c < game_map.map_width; c++) 
+            if(game_map.contents[b][c].owner == 0 && 
+               game_map.contents[b][c].production > 0) 
+                productive_squares_remaining++;
 
+    if (productive_squares_remaining == 0) {
+        j["map_conquered"] = true;
+    } else {
+        j["map_conquered"] = false;
+    }
+
+    for (auto player : stats.player_statistics) {
+        if (player.rank == 1) {
+            j["winner"] = player_names[player.tag - 1];
+        }
+    }
+
+    gameFile << j;
     gameFile.flush();
     gameFile.close();
 }
 
-GameStatistics Halite::runGame(std::vector<std::string> * names_, unsigned int seed, unsigned int id, bool enabledReplay, std::string replayDirectory) {
+GameStatistics& Halite::runGame(std::vector<std::string> * names_, unsigned int seed, unsigned int id) {
     //For rankings
     std::vector<bool> result(number_of_players, true);
     std::vector<unsigned char> rankings;
@@ -331,8 +363,8 @@ GameStatistics Halite::runGame(std::vector<std::string> * names_, unsigned int s
         player_names.clear();
         for(auto a = names_->begin(); a != names_->end(); a++) player_names.push_back(a->substr(0, 30));
     }
-    const int maxTurnNumber = sqrt(game_map.map_width * game_map.map_height) * 10;
-    while(turn_number < maxTurnNumber && (std::count(result.begin(), result.end(), true) > 1 || (number_of_players == 1 && productive_squares_remaining > 0))) {
+
+    while(turn_number < max_turn_number && (std::count(result.begin(), result.end(), true) > 1 || (number_of_players == 1 && productive_squares_remaining > 0))) {
         //Increment turn number:
         turn_number++;
         if(!quiet_output) std::cout << "Turn " << turn_number << "\n";
@@ -343,6 +375,7 @@ GameStatistics Halite::runGame(std::vector<std::string> * names_, unsigned int s
         for(unsigned char a = 0; a < number_of_players; a++) if(result[a] && !newResult[a]) {
             newRankings.push_back(a);
         }
+
         //Sort newRankings by last territory count. If it's the same, use the territory integral instead to break that tie.
         std::stable_sort(newRankings.begin(), newRankings.end(), [&](const unsigned int & u1, const unsigned int & u2) -> bool {
             if(last_territory_count[u1] == last_territory_count[u2]) return full_territory_count[u1] < full_territory_count[u2];
@@ -355,6 +388,9 @@ GameStatistics Halite::runGame(std::vector<std::string> * names_, unsigned int s
         for(unsigned short b = 0; b < game_map.map_height; b++) for(unsigned short c = 0; c < game_map.map_width; c++) if(game_map.contents[b][c].owner == 0 && game_map.contents[b][c].production > 0) productive_squares_remaining++;
         result = newResult;
     }
+
+
+
     std::vector<unsigned int> newRankings;
     for(int a = 0; a < number_of_players; a++) if(result[a]) newRankings.push_back(a);
     //Sort newRankings by last territory count. If it's the same, use the territory integral instead to break that tie.
@@ -364,7 +400,7 @@ GameStatistics Halite::runGame(std::vector<std::string> * names_, unsigned int s
     });
     for(auto a = newRankings.begin(); a != newRankings.end(); a++) rankings.push_back(*a);
     std::reverse(rankings.begin(), rankings.end()); //Best player first rather than last.
-    GameStatistics stats;
+
     int chunkSize = game_map.map_width * game_map.map_height / number_of_players;
     for(unsigned char a = 0; a < number_of_players; a++) {
         PlayerStatistics p;
@@ -384,19 +420,19 @@ GameStatistics Halite::runGame(std::vector<std::string> * names_, unsigned int s
     }
     stats.timeout_tags = timeout_tags;
     stats.timeout_log_filenames = std::vector<std::string>(timeout_tags.size());
-    //Output gamefile. First try the replays folder; if that fails, just use the straight filename.
-    if (enabledReplay) {
-      stats.output_filename = replayDirectory + "Replays/" + std::to_string(id) + '-' + std::to_string(seed) + ".hlt";
-      try {
-	output(stats.output_filename);
-      }
-      catch(std::runtime_error & e) {
-	stats.output_filename = replayDirectory + std::to_string(id) + '-' + std::to_string(seed) + ".hlt";
-	output(stats.output_filename);
-      }
-      if(!quiet_output) std::cout << "Map seed was " << seed << std::endl << "Opening a file at " << stats.output_filename << std::endl;
-      else std::cout << stats.output_filename << ' ' << seed << std::endl;
+
+    stats.output_filename = std::to_string(game_map.map_height) + "x" + std::to_string(game_map.map_width);
+    stats.output_filename += "-" + std::to_string(number_of_players) + "-" + std::to_string(seed) + ".hlt";
+
+    try {
+        output(stats.output_filename);
+    } catch(std::runtime_error & e) {
+        std::cerr << "Failed to write replay file " << stats.output_filename << "\n";
     }
+
+    if(!quiet_output) std::cout << "Map seed was " << seed << std::endl << "Opening a file at " << stats.output_filename << std::endl;
+    else std::cout << "Replay file: " << stats.output_filename << std::endl;
+
     //Output logs for players that timed out or errored.
     int timeoutIndex = 0;
     for(auto a = timeout_tags.begin(); a != timeout_tags.end(); a++) {
@@ -407,6 +443,7 @@ GameStatistics Halite::runGame(std::vector<std::string> * names_, unsigned int s
         file.close();
         timeoutIndex++;
     }
+
     return stats;
 }
 

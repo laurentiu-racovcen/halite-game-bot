@@ -1,20 +1,59 @@
-# Halite
+# Echipa VALgrind
+- Racovcen Laurențiu, 325CD
+- Safronii Veaceslav, 325CD
+- Ciobanu Alexandra, 324CD
 
-[![Travis Badge](https://travis-ci.org/HaliteChallenge/Halite.svg?branch=master)](https://travis-ci.org/HaliteChallenge/Halite)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/HaliteChallenge/Halite/master/LICENSE)
+# Project Evaluator
 
-Halite is a programming competition. Contestants write bots to play an original multi-player turn-based strategy game played on a rectangular grid. For more information about the game, visit [our website](http://halite.io).
+Conţinutul repository-ului:
 
-## Contributing
+- environment/          - engine-ul jocului 
+- replays/              - folder cu rezultatele rularii botului (fisiere tip *.hlt) - (se genereaza automat la rulare)
+- bots/                 - folder cu botii pusi la dispozitie de echipa de PA
+- run.py                - scriptul de evaluare
+- halite-resources.zip  - arhivă cu conținutul acestui repository
+- README.md             - acest fisier
 
-See [the Contributing Guide](CONTRIBUTING.md).
 
-## Questions
+Prerequisites
+===============
 
-See [the Forums](http://2016.forums.halite.io) and [our Discord chat](https://discordapp.com/invite/rbVDB4n).
+Pentru rularea scriptului de evaluare aveți nevoie de Python (>= 3.6).
+Scriptul a fost testat pe o masina de Linux de 64 bits.
 
-## Authors
+Testare
+===============
 
-Halite was primarily created by [Ben Spector](https://github.com/Sydriax) and [Michael Truell](https://github.com/truell20) for Two Sigma during their summer 2016 internship. 
+Scriptul va realiza urmatorii pasi inainte de executia propriu-zisa:
 
-Many others contributed to Halite's developement, including [Matt Adereth](https://github.com/adereth), [Trammell Hudson](https://github.com/osresearch), and Jaques Clapauch from Two Sigma and [Arnaud Sahuguet](https://github.com/sahuguet) and [Scot Spinner](https://github.com/awesomescot) from Cornell Tech. Halite's participants, including [Nick Malaguti](https://github.com/nmalaguti), [Travis Erdman](https://github.com/erdman), and [Janzert](https://github.com/janzert), have also been instrumental to the project.
+- va incerca sa compileze engine-ul jocului daca executabilul (halite) nu se afla in path
+- va incerca sa ruleze "make" pentru a re-compila botul daca descopera un fisier de tip Makefile in path 
+- va sterge log-urile ramase de la executiile precedente
+
+Important: Folositi versiunea engine-ului din acest repo (folderul environment/).
+Spre deosebire de engine-ul din competitia originala am facut cateva modificari minore pentru
+ca fisierele generate de logging sa ofere mai multe informatii. Scriptul acesta se bazeaza 
+pe modificarile respective.
+
+Example rulare:
+
+C++ Bot:
+
+    python ./run.py --cmd "./MyBot" --round 2 
+
+Java Bot:
+
+    python ./run.py --cmd "java MyBot" --round 2 --visualizer "firefox"
+
+Python:
+
+    python ./run.py --cmd "python3 MyBot.py" --round 2 --visualizer "google-chrome-stable"
+    
+Arguments
+
+    --cmd        Comanda de execuție pentru bot (trebuie sa fie validă pentru locația curentă)
+    --round      (Optional) Indicele rundei (1, 2, 3, 4, 5), default 0 (le ruleaza pe toate)
+    --clean      (Optional) Șterge fișierele de log/replays, apeleaza `make clean`
+    --visualiser (Optional) Numele browser-ului in care sa fie afisate rezultatele fiecarui joc
+    --logging    (Optional) Defineste cat de explicite (verbose) sunt mesajele de logging. Optiunile sunt: 
+        - 'critical' (doar mesajele critice), 'info', 'debug' (most verbose) 
