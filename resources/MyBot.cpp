@@ -158,7 +158,7 @@ unsigned char get_next_direction(hlt::GameMap presentMap, hlt::Location location
     } else {
         /* toti vecinii apartin bot-ului */
 
-        if (piece.strength <= 4.2 * piece.production) {
+        if (piece.strength <= 4 * piece.production) {
             return STILL;
         }
 
