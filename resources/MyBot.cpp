@@ -289,7 +289,9 @@ std::set<hlt::Move> update_directions(std::set<hlt::Move> moves, hlt::GameMap pr
                                 if ((iter_site.strength + neigh_neigh_strength > 255)
                                         && (iter_next_location.x == neigh_neigh_target_location.x)
                                         && (iter_next_location.y == neigh_neigh_target_location.y)
-                                        && (presentMap.getSite(neigh_neigh_location).owner == myID)) {
+                                        && (presentMap.getSite(neigh_neigh_location).owner == myID
+                                            || (presentMap.getSite(neigh_location).owner != myID
+                                            && presentMap.getSite(neigh_location).owner != 0))) {
                                     is_checked = true;
                                     // se actualizeaza directia locatiei in "moves_map"
                                     moves_map[iter->first] = STILL;
