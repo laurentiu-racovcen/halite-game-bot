@@ -11,9 +11,6 @@
 #include "hlt.hpp"
 #include "networking.hpp"
 
-#define S_TARGET_HIGH_PRODUCTION_REGIONS 0
-#define S_TARGET_OPPONENT 1
-#define S_NEXT_DIRECTION 2
 #define UNOCCUPIED_ID 0
 
 using namespace std;
@@ -63,45 +60,6 @@ unsigned int get_max_overkill_direction(hlt::Location from_location, vector<hlt:
 
 /* Functie care returneaza urmatoarea miscare a unei piese */
 unsigned char get_next_direction(hlt::GameMap presentMap, hlt::Location location, FILE* fout) {
-
-
-
-
-
-
-
-
-
-
-
-
-    /* TODO: De facut alianta cu botii care nu ataca acest bot */
-    // De pastrat Owner-id-urile tuturor celorlalti boti in acesti doi vectori:
-    // vector de aliati (vector<owner id> allies)
-    // vector de enemies (vector<owner id> enemies)
-
-    // Daca un bot ataca botul acesta, id-ul acestuia este pus in "enemies"
-    // Daca un bot NU ataca botul acesta, id-ul acestuia este pus in "allies"
-
-    // Initial, toti botii sunt pusi in "allies"
-
-
-    // SAUUUU, se poate de pastrat doar enemies in vectorul "enemies", iar ceilalti vor fi aliati daca nu se afla in "enemies"
-
-    /* TODO: De imbunatatit complexitatea la functia update_directions() */
-
-
-
-
-
-
-
-
-
-
-
-
-
     hlt::Site piece = presentMap.getSite(location);
 
     if (piece.strength == 0) {
@@ -317,24 +275,6 @@ std::set<hlt::Move> update_directions(std::set<hlt::Move> moves, hlt::GameMap pr
     return new_moves;
 }
 
-/* TODO */
-unsigned char target_opponent(unsigned char myID, hlt::GameMap presentMap) {
-    return -1;
-}
-
-/* TODO */
-unsigned char target_high_production_regions(unsigned char myID, hlt::GameMap presentMap) {
-    return -1;
-}
-
-/* Functie care selecteaza strategia in functie de ce este pe harta */
-unsigned char get_strategy(unsigned char myID, hlt::GameMap presentMap) {
-    return S_NEXT_DIRECTION;
-    // return S_TARGET_OPPONENT;
-    // return S_TARGET_HIGH_PRODUCTION_REGIONS;
-    // ...
-}
-
 int main() {
 
     FILE* fout;
@@ -347,8 +287,6 @@ int main() {
     unsigned char myID;
     hlt::GameMap presentMap;
     getInit(myID, presentMap);
-
-    unsigned char strategy = get_strategy(myID, presentMap);
 
     sendInit("VALgrind");
 
@@ -372,24 +310,7 @@ int main() {
                 location.y = a;
 
                 if (presentMap.getSite({ b, a }).owner == myID) {
-
-                    switch (strategy) {
-                        case S_NEXT_DIRECTION:
-                            current_move = get_next_direction(presentMap, location, fout);
-                        break;
-
-                        case S_TARGET_OPPONENT:
-                            current_move = target_opponent(myID, presentMap);
-                        break;
-
-                        case S_TARGET_HIGH_PRODUCTION_REGIONS:
-                            current_move = target_high_production_regions(myID, presentMap);
-                        break;
-
-                        default:
-                        break;
-                    }
-
+                    current_move = get_next_direction(presentMap, location, fout);
                     moves.insert({ { b, a }, current_move });
                 }
             }
