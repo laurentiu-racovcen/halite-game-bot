@@ -192,6 +192,19 @@ unsigned char opposite_dir(unsigned char dir) {
     return STILL;
 }
 
+/* Functie care verifica daca harta contine enemies */
+bool map_contains_enemies( unsigned char myID, hlt::GameMap presentMap) {
+    for (unsigned short i = 0; i < presentMap.height; i++) {
+        for (unsigned short j = 0; j < presentMap.width; j++) {
+            if (presentMap.getSite({j,i}).owner != myID && presentMap.getSite({j,i}).owner != 0) {
+                return true;
+                break;
+            }
+        }
+    }
+    return false;
+}
+
 /* Functie care actualizeaza directia pieselor in functie de piesele adiacente
 (pentru a nu avea pierderi de strength) */
 std::set<hlt::Move> update_directions(std::set<hlt::Move> moves, hlt::GameMap presentMap, unsigned char myID, FILE* fout) {
@@ -317,7 +330,13 @@ int main() {
         }
         frames_number++;
 
-        sendFrame(update_directions(moves, presentMap, myID, fout));
+        if (!map_contains_enemies(myID, presentMap)) {
+            sendFrame(moves);
+        } else {
+            // optimizarea directiilor pentru maximizarea strength-ului total
+            // al bot-ului
+            sendFrame(update_directions(moves, presentMap, myID, fout));
+        }
     }
 
     return 0;
